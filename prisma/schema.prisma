@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  name          String?
+  email         String?       @unique
+  emailVerified DateTime?
+  image         String?
+  role          String        @default("user")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  Address       Address[]
+  Transaction   Transaction[]
+
+  @@map("users")
+}
+
+model Address {
+  id           String        @id @default(cuid())
+  userId       String
+  street       String
+  city         String
+  state        String
+  country      String
+  postalCode   String
+  isDefault    Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@map("addresses")
+}
+
+model Transaction {
+  id                String    @id @default(cuid())
+  transactionNumber String
+  userId            String
+  status            String    @default("PENDING")
+  totalItemsPrice   Float
+  shippingPrice     Float
+  shippingProvider  String
+  shippingType      String
+  addressId         String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime?
+  user              User      @relation(fields: [userId], references: [id])
+  address           Address   @relation(fields: [addressId], references: [id])
+  items             Item[]
+
+  @@map("transactions")
+}
+
+model Item {
+  id            String      @id @default(cuid())
+  productId     String
+  quantity      Int
+  transactionId String
+  price         Float
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime?
+  product       Product     @relation(fields: [productId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  @@map("items")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  price       Float
+  categoryId  String
+  image       String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime?
+  category    Category  @relation(fields: [categoryId], references: [id])
+  Item        Item[]
+
+  @@map("products")
+}
