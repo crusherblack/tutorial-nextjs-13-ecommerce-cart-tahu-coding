@@ -49,6 +49,7 @@ const RegisterForm = () => {
       onFinish={onFinish}
       autoComplete="off"
       layout="vertical"
+      form={form}
     >
       {error && (
         <Form.Item>
