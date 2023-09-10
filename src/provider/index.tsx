@@ -13,11 +13,13 @@ type Props = {
 
 const Provider = ({ children }: Props) => {
   return (
-    <ReduxProvider store={store}>
-      <StyleProvider hashPriority="high" ssrInline>
-        <SessionProvider>{children}</SessionProvider>
-      </StyleProvider>
-    </ReduxProvider>
+    <SessionProvider>
+      <ReduxProvider store={store}>
+        <StyleProvider hashPriority="high" ssrInline>
+          {children}
+        </StyleProvider>
+      </ReduxProvider>
+    </SessionProvider>
   );
 };
 

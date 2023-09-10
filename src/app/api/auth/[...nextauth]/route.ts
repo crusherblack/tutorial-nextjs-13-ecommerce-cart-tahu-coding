@@ -1,4 +1,6 @@
+import prisma from "@/lib/prisma";
 import type { NextAuthOptions } from "next-auth";
+import { compare } from "bcrypt";
 
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -6,38 +8,53 @@ import CredentialsProvider from "next-auth/providers/credentials";
 export const OPTIONS: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "credentials", //use this for custom login
       credentials: {
-        username: { label: "Username", type: "text", placeholder: "jsmith" },
+        username: {
+          label: "Username",
+          type: "text",
+          placeholder: "crusherblack",
+        },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const user = { id: "1", name: "admin", password: "admin" };
+        const loginErrorMessage = "Invalid email or password";
 
-        if (
-          credentials?.username == user.name &&
-          credentials.password == user.password
-        ) {
-          return user;
-        } else {
-          return null;
+        //check if email already exist or not
+        const isUserExisted = await prisma.user.findUnique({
+          where: {
+            email: credentials?.username,
+          },
+        });
+
+        //if not throw error
+        if (!isUserExisted) {
+          throw Error(loginErrorMessage);
         }
+
+        //check if password that client input is them sama with hash password from db
+        if (
+          isUserExisted &&
+          credentials?.password &&
+          (await compare(credentials.password, isUserExisted.password))
+        ) {
+          //if email and password valid continue
+          return isUserExisted;
+        }
+
+        //throw error if password not valid
+        throw Error(loginErrorMessage);
       },
     }),
   ],
   pages: {
-    signIn: "/login",
+    signIn: "/login", //tell next auth, this is url for custom login page
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt", //make sure to set it to jwt
   },
   jwt: {
-    secret: "adawd",
-  },
-  callbacks: {
-    async redirect({ url, baseUrl }) {
-      return "http://localhost:3001/login";
-    },
+    secret: process.env.NEXTAUTH_SECRET, //fill with your own secret from .env
   },
 };
 
