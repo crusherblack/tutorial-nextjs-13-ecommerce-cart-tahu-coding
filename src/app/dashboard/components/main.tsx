@@ -5,19 +5,25 @@ import React, { ReactNode } from "react";
 import { Layout, theme } from "antd";
 
 import { usePathname } from "next/navigation";
-import { Session } from "next-auth";
 
-import items from "./menu";
 import Sidebar from "./sidebar";
+import { MenuItem } from "./menu";
 
 const { Header, Content, Footer } = Layout;
 
 type Props = {
   children: ReactNode;
-  session: Session | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+    role: string;
+  } | null;
+  menu: MenuItem[];
 };
 
-const Main: React.FC<Props> = ({ children, session }) => {
+const Main: React.FC<Props> = ({ children, user, menu }) => {
   const {
     token: { colorBgContainer },
   } = theme.useToken();
@@ -26,7 +32,7 @@ const Main: React.FC<Props> = ({ children, session }) => {
 
   return (
     <Layout style={{ minHeight: "100vh" }} hasSider>
-      <Sidebar defaultSelectedKeys={[pathname]} items={items} />
+      <Sidebar defaultSelectedKeys={[pathname]} items={menu} />
       <Layout>
         <Header style={{ padding: 0, background: colorBgContainer }} />
         <Content style={{ margin: "0 16px" }}>

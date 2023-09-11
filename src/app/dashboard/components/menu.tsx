@@ -26,7 +26,8 @@ const getItem = (
   };
 };
 
-const items: MenuItem[] = [
+export const items: MenuItem[] = [
+  //for admin
   getItem("Dashboard", "/dashboard", <DashboardOutlined />),
   getItem("Transactions", "/dashboard/transactions", <TransactionOutlined />),
   getItem("Products", "/dashboard/products", <ContainerOutlined />),
@@ -34,4 +35,9 @@ const items: MenuItem[] = [
   getItem("Profile", "/dashboard/profile", <ProfileOutlined />),
 ];
 
-export default items;
+export const userItems: MenuItem[] = [
+  //for normal user
+  getItem("Dashboard", "/dashboard", <DashboardOutlined />),
+  getItem("Transactions", "/dashboard/transactions", <TransactionOutlined />),
+  getItem("Profile", "/dashboard/profile", <ProfileOutlined />),
+];
