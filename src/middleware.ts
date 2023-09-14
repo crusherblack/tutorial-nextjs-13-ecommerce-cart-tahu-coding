@@ -17,10 +17,10 @@ export default async function middleware(req: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  const isProtected = path.includes("/dashboard");
+  const isPageProtected = path.includes("/dashboard");
 
   //if jwt token valid then continue, otherwise redirect to login
-  if (!session && isProtected) {
+  if (!session && isPageProtected) {
     return NextResponse.redirect(new URL("/login", req.url));
   } else if (session && (path === "/login" || path === "/register")) {
     return NextResponse.redirect(new URL("/", req.url));

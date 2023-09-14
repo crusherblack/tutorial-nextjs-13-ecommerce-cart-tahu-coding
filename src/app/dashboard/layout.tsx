@@ -4,6 +4,7 @@ import { OPTIONS } from "../api/auth/[...nextauth]/route";
 import Main from "./components/main";
 import prisma from "@/lib/prisma";
 import { userItems, items } from "./components/menu";
+import NotificationContext from "@/context/notificationContext";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -34,8 +35,10 @@ export default async function RootLayout({
   const menu = user?.role === "user" ? userItems : items;
 
   return (
-    <Main user={user} menu={menu}>
-      {children}
-    </Main>
+    <NotificationContext>
+      <Main user={user} menu={menu}>
+        {children}
+      </Main>
+    </NotificationContext>
   );
 }

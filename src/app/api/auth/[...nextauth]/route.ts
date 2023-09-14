@@ -38,8 +38,9 @@ export const OPTIONS: NextAuthOptions = {
           credentials?.password &&
           (await compare(credentials.password, isUserExisted.password))
         ) {
+          const { password: _, ...restUser } = isUserExisted;
           //if email and password valid continue
-          return isUserExisted;
+          return restUser;
         }
 
         //throw error if password not valid
@@ -55,6 +56,24 @@ export const OPTIONS: NextAuthOptions = {
   },
   jwt: {
     secret: process.env.NEXTAUTH_SECRET, //fill with your own secret from .env
+  },
+  callbacks: {
+    session: async ({ session, token }) => {
+      if (session?.user) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+      }
+      return session;
+    },
+    jwt: async ({ user, token }) => {
+      if (user) {
+        token = {
+          ...user,
+          ...token,
+        };
+      }
+      return token;
+    },
   },
 };
 
