@@ -18,6 +18,10 @@ type ProductPaginationParams = {
   };
 };
 
+export type ProductFields = Omit<Product, "image"> & {
+  image: File | null | string;
+};
+
 export const productApi = createApi({
   reducerPath: "productApi",
   baseQuery: fetchBaseQuery({ baseUrl: APP_URL }),
@@ -36,25 +40,51 @@ export const productApi = createApi({
         return `/api/dashboard/products${queryParams}`;
       },
     }),
-    addProduct: builder.mutation<GeneralResponse<Product>, Partial<Product>>({
-      query: (todo) => ({
-        url: "products",
-        method: "POST",
-        body: todo,
-      }),
+    addProduct: builder.mutation<GeneralResponse<Product>, ProductFields>({
+      query: (product) => {
+        const formData = new FormData();
+        formData.append("name", product.name);
+        formData.append("description", product.description);
+        formData.append("categoryId", product.categoryId);
+        formData.append("price", product.price.toString());
+        formData.append("qty", product.qty.toString());
+
+        if (product.image) {
+          formData.append("image", product.image);
+        }
+
+        return {
+          url: "/api/dashboard/products",
+          method: "POST",
+          body: formData,
+          formData: true,
+        };
+      },
     }),
-    updateProduct: builder.mutation<GeneralResponse<Product>, Partial<Product>>(
-      {
-        query: ({ id, ...patch }) => ({
-          url: `products/${id}`,
+    updateProduct: builder.mutation<GeneralResponse<Product>, ProductFields>({
+      query: ({ id, ...edit }) => {
+        const formData = new FormData();
+        formData.append("name", edit.name);
+        formData.append("description", edit.description);
+        formData.append("categoryId", edit.categoryId);
+        formData.append("price", edit.price.toString());
+        formData.append("qty", edit.qty.toString());
+
+        if (edit.image && typeof edit.image === "object") {
+          formData.append("image", edit.image);
+        }
+
+        return {
+          url: `/api/dashboard/products/${id}`,
           method: "PATCH",
-          body: patch,
-        }),
-      }
-    ),
+          body: formData,
+          formData: true,
+        };
+      },
+    }),
     deleteProduct: builder.mutation<void, string>({
       query: (id) => ({
-        url: `products/${id}`,
+        url: `/api/dashboard/products/${id}`,
         method: "DELETE",
       }),
     }),

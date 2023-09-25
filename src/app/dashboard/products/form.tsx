@@ -7,77 +7,73 @@ import {
   Button,
   FormInstance,
   Upload,
-  UploadFile,
   Select,
   InputNumber,
 } from "antd";
-import React, { useState } from "react";
-import type { Product } from "@prisma/client";
 import { PlusOutlined } from "@ant-design/icons";
 import useNotification from "@/hooks/useNotification";
+import {
+  ProductFields,
+  useAddProductMutation,
+  useUpdateProductMutation,
+} from "@/services/product";
+import { useWatch } from "antd/es/form/Form";
+import { useGetCategoriesQuery } from "@/services/category";
+import { useMemo } from "react";
 
-type FieldType = Product;
+type FieldType = ProductFields;
 
 type Props = {
   form: FormInstance<FieldType>;
   isFormVisible: boolean;
   handleCloseModal: () => void;
+  refetch: () => void;
 };
 
 const ProductForm = ({
   form,
   isFormVisible,
   handleCloseModal = () => {},
+  refetch = () => {},
 }: Props) => {
   const { openNotification } = useNotification();
+  const { data } = useGetCategoriesQuery(null);
 
-  const [image, setImage] = useState<File | null>(null);
+  const categories = useMemo(() => data?.data.categories || [], [data]);
+
+  const [addProduct, { isLoading }] = useAddProductMutation();
+  const [updateProduct, { isLoading: updateLoading }] =
+    useUpdateProductMutation();
+
+  const imageField = useWatch("image", form);
+  const isEdit = !!useWatch("id", form);
 
   const onFinish = async (values: FieldType) => {
     try {
-      const formData = new FormData();
-      formData.append("name", values.name);
-      if (image) {
-        formData.append("image", image);
+      if (!isEdit) {
+        await addProduct({ ...values, image: imageField }).unwrap();
+      } else {
+        await updateProduct({ ...values, image: imageField }).unwrap();
       }
-
-      const headers = {
-        "Content-Type": "multipart/form-data", // Set the content type to support form data
-      };
-
-      // const { data } = await api.post("/api/dashboard/products", formData, {
-      //   headers,
-      // });
 
       openNotification({
         type: "success",
         options: {
-          message: "Product Create Succesfully",
+          message: `Product ${isEdit ? "Updated" : "Created"} Succesfully`,
         },
       });
 
-      // return console.log(data);
-
       form.resetFields();
+      refetch();
+      handleCloseModal();
     } catch (error) {
-      //handle error based on axios instance or not
-    } finally {
-    }
-  };
-
-  const validateFileType = ({ type }: UploadFile, allowedTypes?: string) => {
-    if (!allowedTypes) {
-      return true;
-    }
-
-    if (type) {
-      return allowedTypes.includes(type);
+      console.log(error);
     }
   };
 
   return (
     <Modal
-      title="Create New Product"
+      title={`${isEdit ? "Edit" : "Create New"} Product`}
       open={isFormVisible}
       footer={() => <div />}
       onCancel={handleCloseModal}
@@ -91,6 +87,15 @@ const ProductForm = ({
         layout="vertical"
         form={form}
       >
+        <div className="hidden">
+          <Form.Item<FieldType> name="id">
+            <Input type="hidden" />
+          </Form.Item>
+          <Form.Item<FieldType> name="image">
+            <Input type="hidden" />
+          </Form.Item>
+        </div>
+
         <Form.Item<FieldType>
           label="Name"
           name="name"
@@ -129,8 +134,12 @@ const ProductForm = ({
             },
           ]}
         >
-          <Select placeholder="Select your Category" size="large">
-            <Select.Option value="demo">Demo</Select.Option>
+          <Select placeholder="Select your Category" size="large" showSearch>
+            {categories.map((category) => (
+              <Select.Option key={category.id} value={category.id}>
+                {category.name}
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
 
@@ -178,19 +187,34 @@ const ProductForm = ({
 
         <Form.Item<FieldType> label="Image">
           <Upload
+            accept="image/png, image/jpeg"
             listType="picture-card"
             maxCount={1}
             beforeUpload={(file) => {
-              setImage(file);
+              form.setFieldValue("image", file);
+
               return false;
             }}
             onPreview={() => false}
             onRemove={() => {
-              setImage(null);
+              form.setFieldValue("image", null);
             }}
-            accept="image/png, image/jpeg"
+            fileList={
+              imageField
+                ? [
+                    {
+                      uid: "local-image",
+                      name: "local-image.png",
+                      url:
+                        typeof imageField === "string"
+                          ? imageField
+                          : URL.createObjectURL(imageField),
+                    },
+                  ]
+                : []
+            }
           >
-            {!image && (
+            {!imageField && (
               <div>
                 <PlusOutlined />
                 <div style={{ marginTop: 8 }}>Upload</div>
@@ -205,6 +229,7 @@ const ProductForm = ({
             htmlType="submit"
             className="w-full mt-4"
             size="large"
+            loading={isLoading || updateLoading}
           >
             Save Product
           </Button>

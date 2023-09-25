@@ -23,12 +23,15 @@ export const columns: ColumnsType<Product> = [
     render: (value) => convertToRupiah(value.price),
   },
   {
+    title: "Qty",
+    render: (value) => value.qty,
+  },
+  {
     title: "Image",
-    width: "20%",
     render: (value) => (
       <Image
-        width={120}
-        height={80}
+        width={60}
+        height={40}
         src={value.image}
         style={{
           objectFit: "cover",

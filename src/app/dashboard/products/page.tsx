@@ -1,18 +1,25 @@
 "use client";
 
-import { Button, Form, Table, Input } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
-import { TablePaginationConfig } from "antd/es/table";
+import { Button, Form, Table, Input, Popconfirm } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { PlusOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 
 import ProductForm from "./form";
 import { columns } from "./column";
 
-import { useGetProductsQuery } from "@/services/product";
+import {
+  ProductFields,
+  useDeleteProductMutation,
+  useGetProductsQuery,
+} from "@/services/product";
 import { addSearchParams } from "@/utils/url";
+import { Product } from "@prisma/client";
 
 const DEFAULT_PAGE = 1;
-const DEFAULT_LIMIT = 5;
+const DEFAULT_LIMIT = 10;
 
 const Products = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -23,6 +30,11 @@ const Products = () => {
   const page = parseInt(searchParams.get("page") as string) || DEFAULT_PAGE;
   const limit = parseInt(searchParams.get("limit") as string) || DEFAULT_LIMIT;
   const searchName = searchParams.get("name") || "";
+
+  const [deleteProduct, { isLoading }] = useDeleteProductMutation();
+
+  // need to init this on the page level to easily handle form when edit and save
+  const [form] = Form.useForm<ProductFields>();
 
   const { data, isFetching, refetch } = useGetProductsQuery({
     page,
@@ -40,9 +52,6 @@ const Products = () => {
     refetch();
   }, [page, limit, searchName, refetch]);
 
-  // need to init this on the page level to easily handle form when edit and save
-  const [form] = Form.useForm();
-
   const handleTableChange = (pagination: TablePaginationConfig) => {
     router.push(
       pathname +
@@ -56,16 +65,68 @@ const Products = () => {
 
   const handleShowModal = () => {
     setIsFormVisible(true);
+
+    form.resetFields();
   };
 
   const handleCloseModal = () => {
     setIsFormVisible(false);
   };
 
+  const handleEditProduct = (product: Product) => {
+    form.setFieldsValue({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      qty: product.qty,
+      price: product.price,
+      categoryId: product.categoryId,
+      image: product.image,
+    });
+
+    setIsFormVisible(true);
+  };
+
+  const handleDeleteProduct = async (product: Product) => {
+    await deleteProduct(product.id).unwrap();
+
+    refetch();
+  };
+
+  const actionColumns: ColumnsType<Product> = [
+    {
+      title: "Action",
+      render: (value: Product) => (
+        <div className="flex justify-center items-center gap-2">
+          <Button
+            type="dashed"
+            icon={<EditOutlined />}
+            onClick={() => handleEditProduct(value)}
+          />
+          <Popconfirm
+            title="Delete the Product"
+            description="Are you sure to delete this product?"
+            okText="Yes"
+            cancelText="No"
+            onConfirm={() => handleDeleteProduct(value)}
+            okButtonProps={{ loading: isLoading }}
+          >
+            <Button type="dashed" danger icon={<DeleteOutlined />} />
+          </Popconfirm>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <Button type="primary" onClick={handleShowModal} size="large">
+        <Button
+          type="primary"
+          onClick={handleShowModal}
+          size="large"
+          icon={<PlusOutlined />}
+        >
           Create Product
         </Button>
         <div>
@@ -83,7 +144,7 @@ const Products = () => {
         </div>
       </div>
       <Table
-        columns={columns}
+        columns={[...columns, ...actionColumns]}
         rowKey={(record) => record.id}
         dataSource={dataSource}
         pagination={{
@@ -103,6 +164,7 @@ const Products = () => {
         form={form}
         isFormVisible={isFormVisible}
         handleCloseModal={handleCloseModal}
+        refetch={refetch}
       />
     </div>
   );

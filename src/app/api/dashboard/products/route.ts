@@ -1,49 +1,13 @@
 import { NextResponse, NextRequest } from "next/server";
+import prisma from "@/lib/prisma";
+import slugify from "slugify";
+
+import { supabase } from "@/lib/supabase";
+import { CreateProductDto } from "./dto";
+import { PRODUCT_IMAGE_PATH } from "@/constant";
 import { getToken } from "next-auth/jwt";
 
-import prisma from "@/lib/prisma";
-import { hash } from "bcrypt";
-
 const { json: jsonResponse } = NextResponse;
-
-export const POST = async (request: NextRequest) => {
-  try {
-    const session = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
-
-    const res = await request.formData();
-
-    //lanjutkan buat save ke db dan upload ke bucket
-    const formData = {
-      name: res.get("name"),
-      image: res.get("image"),
-    };
-
-    //check if email already exist in database or not
-
-    return jsonResponse(
-      {
-        message: "Successfully registered user",
-        data: session,
-        res,
-      },
-      {
-        status: 201, //success created status code
-      }
-    );
-  } catch (_error) {
-    return jsonResponse(
-      {
-        message: "Server Error",
-      },
-      {
-        status: 500, //server error status code
-      }
-    );
-  }
-};
 
 export const GET = async (request: NextRequest) => {
   const url = new URL(request.url);
@@ -84,13 +48,19 @@ export const GET = async (request: NextRequest) => {
         category: true,
       },
       where,
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
     return jsonResponse(
       {
         message: "Successfully get products",
         data: {
-          products,
+          products: products.map((product) => ({
+            ...product,
+            image: PRODUCT_IMAGE_PATH + product.image,
+          })),
           totalCount,
           totalPages,
         },
@@ -99,6 +69,118 @@ export const GET = async (request: NextRequest) => {
         status: 200,
       }
     );
+  } catch (_error) {
+    return jsonResponse(
+      {
+        message: "Server Error",
+      },
+      {
+        status: 500, //server error status code
+      }
+    );
+  }
+};
+
+export const POST = async (request: NextRequest) => {
+  try {
+    const session = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    const formData = await request.formData();
+
+    const response = CreateProductDto.safeParse(formData);
+
+    if (!response.success) {
+      const { errors } = response.error;
+
+      return jsonResponse(
+        {
+          message: "Invalid request",
+          errors,
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const { name, description, categoryId, price, qty, image } = response.data;
+    const fileExtension = `.${image.name.split(".").pop()}` || "";
+
+    //upload image to server
+    const { data: uploadData, error } = await supabase.storage
+      .from("storage/products")
+      .upload(
+        `product-${slugify(name, { lower: true })}-${Date.now()}-${
+          session?.id
+        }` + fileExtension,
+        image
+      );
+    if (error) {
+      return jsonResponse(
+        {
+          message: "Failed to upload image",
+          errors: [error],
+        },
+        {
+          status: 400,
+        }
+      );
+    } else {
+      let slug = slugify(name, { lower: true });
+
+      const existingRecord = await prisma.product.findUnique({
+        where: { slug },
+      });
+
+      // Check if the slug already exists
+      if (existingRecord) {
+        // Generate a unique slug by appending a counter
+        let counter = 1;
+        let uniqueSlug = `${slug}-${counter}`;
+
+        // Keep incrementing the counter until a unique slug is found
+        while (
+          await prisma.product.findUnique({ where: { slug: uniqueSlug } })
+        ) {
+          counter++;
+          uniqueSlug = `${slug}-${counter}`;
+        }
+
+        // Set the unique slug
+        slug = uniqueSlug;
+      }
+
+      //create product with new slug and image path
+      const product = await prisma.product.create({
+        data: {
+          name,
+          slug,
+          description,
+          categoryId,
+          price,
+          qty,
+          image: uploadData.path,
+        },
+      });
+
+      return jsonResponse(
+        {
+          message: "Successfully created product",
+          data: {
+            product: {
+              ...product,
+              image: PRODUCT_IMAGE_PATH + product.image,
+            },
+          },
+        },
+        {
+          status: 201, //success created status code
+        }
+      );
+    }
   } catch (_error) {
     return jsonResponse(
       {
