@@ -33,7 +33,7 @@ export const GET = async (request: NextRequest) => {
       };
     }
 
-    // Get total count of todos
+    // Get total count of products
     const totalCount = await prisma.product.count({
       where,
     });
@@ -92,6 +92,22 @@ export const POST = async (request: NextRequest) => {
 
     const response = CreateProductDto.safeParse(formData);
 
+    const image = formData.get("image") as File;
+
+    const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+
+    if (image && image.size > maxSizeInBytes) {
+      return jsonResponse(
+        {
+          message: "Invalid request",
+          errors: [{ message: "max image is 5MB" }],
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     if (!response.success) {
       const { errors } = response.error;
 
@@ -106,7 +122,7 @@ export const POST = async (request: NextRequest) => {
       );
     }
 
-    const { name, description, categoryId, price, qty, image } = response.data;
+    const { name, description, categoryId, price, qty } = response.data;
     const fileExtension = `.${image.name.split(".").pop()}` || "";
 
     //upload image to server

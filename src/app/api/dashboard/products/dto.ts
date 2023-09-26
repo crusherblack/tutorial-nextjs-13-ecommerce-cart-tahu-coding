@@ -37,7 +37,6 @@ export const CreateProductDto = zfd.formData({
       .trim()
       .min(1, "Name cannot be empty")
   ),
-  image: zfd.file(),
 });
 
 //data transfer object with validation using form data
@@ -76,5 +75,4 @@ export const UpdateProductDto = zfd.formData({
       .trim()
       .min(1, "Name cannot be empty")
   ),
-  image: zfd.file(z.instanceof(File).optional()),
 });

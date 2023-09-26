@@ -52,7 +52,7 @@ export const PATCH = async (request: NextRequest, { params: { id } }: any) => {
       );
     }
 
-    const { name, description, categoryId, price, qty, image } = response.data;
+    const { name, description, categoryId, price, qty } = response.data;
 
     let data: Partial<Product> = {
       name,
@@ -61,6 +61,22 @@ export const PATCH = async (request: NextRequest, { params: { id } }: any) => {
       price,
       qty,
     };
+
+    const image = formData.get("image") as File;
+
+    const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+
+    if (image && image.size > maxSizeInBytes) {
+      return jsonResponse(
+        {
+          message: "Invalid request",
+          errors: [{ message: "max image is 5MB" }],
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     if (image) {
       //delete image if already exist
